@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medicloud-api
+  namespace: medicloud
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: medicloud-api
+  template:
+    metadata:
+      labels:
+        app: medicloud-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: medicloud-api:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 4000
+          envFrom:
+            - configMapRef:
+                name: medicloud-config
+            - secretRef:
+                name: medicloud-secrets
+          volumeMounts:
+            - name: private-documents
+              mountPath: /data/private-documents
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+      volumes:
+        - name: private-documents
+          persistentVolumeClaim:
+            claimName: medicloud-private-documents
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: medicloud-private-documents
+  namespace: medicloud
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: medicloud-api
+  namespace: medicloud
+spec:
+  selector:
+    app: medicloud-api
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http

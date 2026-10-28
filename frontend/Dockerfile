@@ -13,7 +13,7 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
     VITE_APPID_DISCOVERY_ENDPOINT=$VITE_APPID_DISCOVERY_ENDPOINT
 RUN npm run build -w frontend
 
-FROM nginx:1.27-alpine
+FROM nginx:1.30.6-alpine3.24-slim
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 EXPOSE 8080

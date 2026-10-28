@@ -22,9 +22,10 @@ jobs:
           load: true
           tags: medicloud-api:scan
       - name: Scan API image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: medicloud-api:scan
+          version: 0.76.1
           format: table
           vuln-type: os,library
           severity: CRITICAL,HIGH
@@ -40,9 +41,10 @@ jobs:
             VITE_APPID_CLIENT_ID=scan-placeholder
             VITE_APPID_DISCOVERY_ENDPOINT=https://example.invalid
       - name: Scan frontend image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: medicloud-web:scan
+          version: 0.76.1
           format: table
           vuln-type: os,library
           severity: CRITICAL,HIGH

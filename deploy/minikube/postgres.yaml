@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: medicloud-postgres
+  namespace: medicloud
+spec:
+  clusterIP: None
+  selector:
+    app: medicloud-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: medicloud-postgres
+  namespace: medicloud
+spec:
+  serviceName: medicloud-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: medicloud-postgres
+  template:
+    metadata:
+      labels:
+        app: medicloud-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: medicloud
+            - name: POSTGRES_USER
+              value: medicloud
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: medicloud-secrets
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U medicloud -d medicloud"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U medicloud -d medicloud"]
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 2Gi
