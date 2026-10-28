@@ -47,6 +47,12 @@ export function AuthProvider({ children }) {
       setSession({ user: data.data.user, token: data.data.accessToken });
       return data.data.user;
     },
+    async signInWithPassword(username, password) {
+      const { data } = await api.post('/auth/local/session', { username, password });
+      api.defaults.headers.common.Authorization = `Bearer ${data.data.accessToken}`;
+      setSession({ user: data.data.user, token: data.data.accessToken });
+      return data.data.user;
+    },
     async signOut() {
       try { if (session?.token) await api.post('/auth/logout'); } catch { /* Clear the local session even if the API is offline. */ }
       delete api.defaults.headers.common.Authorization;

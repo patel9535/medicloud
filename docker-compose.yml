@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: medicloud
+      POSTGRES_USER: medicloud
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medicloud -d medicloud"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [database]
+
+  medicloud-api:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://medicloud:${POSTGRES_PASSWORD}@postgres:5432/medicloud
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:8080}
+      APPID_OAUTH_SERVER_URL: ${APPID_OAUTH_SERVER_URL:?Set App ID OAuth URL in .env}
+      APPID_CLIENT_ID: ${APPID_CLIENT_ID:?Set App ID client ID in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      DOCUMENT_STORAGE_DIR: /data/private-documents
+    volumes:
+      - private-documents:/data/private-documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [database, application]
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_APPID_CLIENT_ID: ${VITE_APPID_CLIENT_ID:?Set SPA App ID client ID in .env}
+        VITE_APPID_DISCOVERY_ENDPOINT: ${VITE_APPID_DISCOVERY_ENDPOINT:?Set App ID discovery endpoint in .env}
+    ports:
+      - "8080:8080"
+    depends_on:
+      medicloud-api:
+        condition: service_healthy
+    networks: [application]
+
+volumes:
+  postgres-data:
+  private-documents:
+
+networks:
+  database:
+    internal: true
+  application: {}

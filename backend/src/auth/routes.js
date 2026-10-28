@@ -5,8 +5,41 @@ import { pool } from '../db.js';
 import { config } from '../config.js';
 import { createAccessToken } from './tokens.js';
 import { requireAuth } from './middleware.js';
+import { verifyPassword } from './passwords.js';
 
 export const authRouter = Router();
+
+authRouter.post('/local/session', async (request, response, next) => {
+  const username = typeof request.body?.username === 'string' ? request.body.username.trim() : '';
+  const password = typeof request.body?.password === 'string' ? request.body.password : '';
+  if (!pool) return response.status(503).json({ success: false, data: null, message: 'Database is not configured.' });
+  if (!/^[a-zA-Z0-9._-]{3,40}$/.test(username) || password.length < 1 || password.length > 128) {
+    return response.status(401).json({ success: false, data: null, message: 'Invalid username or password.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.email, u.role, credentials.password_hash AS "passwordHash"
+       FROM local_credentials credentials
+       JOIN users u ON u.id = credentials.user_id
+       WHERE lower(credentials.username) = lower($1)`,
+      [username],
+    );
+    const account = result.rows[0];
+    if (!account || account.role !== 'DOCTOR' || !(await verifyPassword(password, account.passwordHash))) {
+      return response.status(401).json({ success: false, data: null, message: 'Invalid username or password.' });
+    }
+
+    const user = { id: account.id, name: account.name, email: account.email, role: account.role };
+    return response.json({
+      success: true,
+      data: { user, accessToken: createAccessToken(user.id) },
+      message: 'Signed in.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
 
 const appIdStrategy = config.appIdOauthServerUrl
   ? new APIStrategy({

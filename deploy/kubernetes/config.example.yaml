@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: medicloud-config
+  namespace: medicloud
+data:
+  NODE_ENV: production
+  PORT: "4000"
+  CLIENT_ORIGIN: https://medicloud.example.com
+  APPID_OAUTH_SERVER_URL: https://region.appid.cloud.ibm.com/oauth/v4/replace-instance-id
+  DOCUMENT_STORAGE_DIR: /data/private-documents
+  DATABASE_SSL: "true"

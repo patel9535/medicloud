@@ -44,6 +44,15 @@ Set these values:
 
 Restart the dev servers after changing environment values. App ID must provide a verified email and a name or first-name attribute. New users are created as patients. Doctor and admin accounts must be provisioned using their verified App ID email before they sign in.
 
+Doctors can also use a provisioned local username and password. The password is stored as a bcrypt hash in `local_credentials`; the local login endpoint only accepts doctor accounts. Provision or update one with:
+
+```powershell
+docker compose exec medicloud-api node scripts/migrate.js
+docker compose exec medicloud-api node scripts/create-user.js --role=DOCTOR --name="Demo Doctor" --email="doctor@example.test" --username="Doctor001" --password="ChooseASecret"
+```
+
+Apply migrations before provisioning local credentials. For the classroom demo, use the password you want at provisioning time; avoid reusing it outside this synthetic project.
+
 Provision a doctor from a trusted terminal after running the database migration:
 
 ```powershell
@@ -60,6 +69,21 @@ The command can also promote an existing patient account to doctor. It creates a
 - `npm.cmd run user:create -w backend -- ...` — provision a doctor or admin account
 - `npm.cmd test` — run backend tests
 
+## Docker and deployment
+
+For a local containerized run, copy `.env.example` to `.env`, fill in the Compose values (including a URL-safe `POSTGRES_PASSWORD`, App ID values, and a random `JWT_SECRET`), then run:
+
+```powershell
+docker compose up --build -d
+docker compose exec medicloud-api node scripts/migrate.js
+```
+
+Open <http://localhost:8080>. The PostgreSQL data and private uploads use named volumes. This Compose setup is for local demonstration; use managed PostgreSQL with TLS and managed secrets for a hosted deployment.
+
+Kubernetes manifests, readiness/liveness probes, persistent private-document storage, TLS ingress, a least-privilege pod security profile, and network policies are under [`deploy/kubernetes`](deploy/kubernetes). Follow that directory's README to configure a cluster, managed database, registry images, ingress TLS, App ID URLs, and secrets. The manifests assume an ingress-nginx controller, an encrypted RWX storage class for multiple API replicas, and a CNI that enforces NetworkPolicy.
+
+The GitHub Actions workflow at [`.github/workflows/container-scan.yml`](.github/workflows/container-scan.yml) builds both images and scans for HIGH and CRITICAL OS/library vulnerabilities with Trivy. It fails the workflow when either severity is found. The scan runs after these changes are pushed to GitHub.
+
 ## Security
 
-Never commit `.env` files, passwords, API keys, access tokens, or uploaded files. Keep the example environment files as placeholders. Use synthetic patient data only.
+Never commit `.env` files, passwords, API keys, access tokens, or uploaded files. Keep the example environment files as placeholders. Use synthetic patient data only. Production PostgreSQL should use TLS, private network access, backups, and a least-privilege application role. Production secrets belong in a cloud secret manager or Kubernetes Secret integration.

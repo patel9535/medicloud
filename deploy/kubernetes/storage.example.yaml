@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: medicloud-private-documents
+  namespace: medicloud
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: replace-with-encrypted-storage-class
+  resources:
+    requests:
+      storage: 5Gi

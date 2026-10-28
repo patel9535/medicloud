@@ -66,10 +66,23 @@ function Home() {
 }
 
 function AuthForm({ registering = false }) {
-  const { signIn, appIdConfigured, appIdReady, appIdError } = useAuth();
+  const { signIn, signInWithPassword, appIdConfigured, appIdReady, appIdError } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  async function submitLocal(event) {
+    event.preventDefault();
+    setLocalError(''); setBusy(true);
+    try {
+      const user = await signInWithPassword(username, password);
+      navigate(user.role === 'DOCTOR' ? '/doctor' : '/patient');
+    } catch (err) {
+      setLocalError(err.response?.data?.message ?? 'Could not sign in. Check your username and password.');
+    } finally { setBusy(false); }
+  }
   async function submit() {
     setError(''); setBusy(true);
     try {
@@ -80,8 +93,15 @@ function AuthForm({ registering = false }) {
   }
   return <main className="auth-shell"><Link className="brand-name auth-brand" to="/">← MediCloud</Link><section className="auth-card">
     <div className="eyebrow">{registering ? 'GET STARTED' : 'WELCOME BACK'}</div><h1>{registering ? 'Create your account' : 'Sign in to MediCloud'}</h1>
-    <p className="auth-subtitle">Continue securely with IBM App ID. New App ID users are added as patients.</p>
-    {(error || appIdError || !appIdConfigured) && <div className="form-error" role="alert">{error || appIdError || 'IBM App ID is not configured. Add its SPA client ID and discovery endpoint to frontend/.env.'}</div>}
+    <p className="auth-subtitle">{registering ? 'Create a patient account with IBM App ID.' : 'Doctors can sign in with their MediCloud credentials. Patients can continue with IBM App ID.'}</p>
+    {!registering && <form onSubmit={submitLocal}>
+      <label>Doctor username<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
+      <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+      {localError && <div className="form-error" role="alert">{localError}</div>}
+      <button className="primary-link form-submit" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in as doctor'} <span aria-hidden="true">→</span></button>
+    </form>}
+    <div className="auth-divider">{registering ? 'Continue with IBM App ID' : 'OR'}</div>
+    {(error || (appIdConfigured && appIdError)) && <div className="form-error" role="alert">{error || appIdError}</div>}
     <button className="primary-link form-submit" onClick={submit} disabled={busy || !appIdConfigured || !appIdReady}>{busy ? 'Connecting…' : !appIdConfigured ? 'App ID setup required' : appIdReady ? 'Continue with IBM App ID' : 'Initializing App ID'} <span aria-hidden="true">→</span></button>
     <div className="auth-switch">{registering ? 'Already have an account?' : 'New to MediCloud?'} <Link to={registering ? '/login' : '/register'}>{registering ? 'Sign in' : 'Create a patient account'}</Link></div>
   </section><p className="auth-disclaimer">Educational demonstration · Never use real patient information</p></main>;

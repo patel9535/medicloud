@@ -1,0 +1,49 @@
+name: Container security scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          load: true
+          tags: medicloud-api:scan
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: medicloud-api:scan
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          load: true
+          tags: medicloud-web:scan
+          build-args: |
+            VITE_APPID_CLIENT_ID=scan-placeholder
+            VITE_APPID_DISCOVERY_ENDPOINT=https://example.invalid
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: medicloud-web:scan
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: '1'
