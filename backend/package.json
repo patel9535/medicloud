@@ -1,0 +1,23 @@
+{
+  "name": "@medicloud/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "user:create": "node scripts/create-user.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "ibmcloud-appid": "^7.0.1",
+    "passport": "^0.7.0",
+    "pg": "^8.16.3"
+  }
+}
